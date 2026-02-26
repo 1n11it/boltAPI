@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from . import routers
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 app = FastAPI()
 
@@ -14,6 +15,10 @@ app.add_middleware(
     allow_methods=["*"], 
     allow_headers=["*"], 
 )
+
+@app.get("/")
+def root():
+    return RedirectResponse(url="/redoc")
 
 app.include_router(routers.post_router)
 app.include_router(routers.user_router)
