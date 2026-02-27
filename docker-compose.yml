@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
     volumes:
-      - .:/app
+      - .:/app:ro
     restart: always
     depends_on:
       - db
