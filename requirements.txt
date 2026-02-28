@@ -1,3 +1,14 @@
+# =====================================================================
+# BOLT API - PROJECT DEPENDENCIES
+# =====================================================================
+# This file lists all the required Python packages and their versions for the project.
+# This ensures that all developers have the same environment.
+#
+# HOW TO INSTALL:
+# To set up this project on a new server system,
+# activate your virtual environment (venv) and run this command:
+# -> pip install -r requirements.txt
+# =====================================================================
 alembic==1.18.4
 annotated-doc==0.0.4
 annotated-types==0.7.0
@@ -37,6 +48,7 @@ pydantic-extra-types==2.11.0
 pydantic-settings==2.12.0
 pydantic_core==2.41.5
 Pygments==2.19.2
+pytest==9.0.2
 python-dotenv==1.2.1
 python-jose==3.5.0
 python-multipart==0.0.22

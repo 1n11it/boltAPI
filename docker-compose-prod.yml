@@ -1,27 +1,57 @@
+# =====================================================================
+# BOLT API - PRODUCTION DOCKER COMPOSE
+# =====================================================================
+# This file defines the production environment for the application.
+# It prioritizes stability, pre-built images, and standard web ports.
+# 
+# HOW TO RUN:
+# docker-compose -f docker-compose-prod.yml up -d
+# =====================================================================
+
 services:
   api:
+    # In production, we NEVER build from source. We pull a pre-compiled, 
+    # tested image from a container registry (like Docker Hub) to ensure reliability.
     image: 1n11it/boltapi:latest
     container_name: boltapi_api
+    
+    # Map the standard HTTP port (80) on the host server to our internal FastAPI port (8000).
+    # This allows users to visit the API without typing ':8000' in the URL.
     ports:
       - "80:8000"
+      
+    # Securely load environment variables without hardcoding them in this file.
     env_file:
       - .env
+      
+    # Ensures the API automatically restarts if the container crashes or the server reboots.
     restart: always
+    
+    # Delays the startup of the API until the database container is up and running.
     depends_on:
       - db
 
   db:
     image: boltapi-postgres:latest
     container_name: boltapi_db
+    
+    # Passes database credentials from the .env file directly into the Postgres container.
     environment:
       POSTGRES_USER: ${DATABASE_USERNAME} 
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}  
       POSTGRES_DB: ${DATABASE_NAME}
+      
+    # Exposing the database port allows external database GUI clients (like DBeaver/pgAdmin) 
+    # to connect to the production database for administrative tasks.
     ports:
       - "5432:5432"
+      
+    # CRITICAL: This named volume ensures that database records survive container restarts.
+    # Without this, all users and posts would be permanently deleted if the DB container stops!
     volumes:
       - postgres_data:/var/lib/postgresql/data 
     restart: always
 
+# Declare the named volume used by the database service above.
 volumes:
   postgres_data:

@@ -1,11 +1,30 @@
+# =====================================================================
+# BOLT API - DEVELOPMENT DOCKER COMPOSE
+# =====================================================================
+# This file is strictly for local development. It prioritizes fast iteration,
+# hot-reloading, and building directly from the local source code.
+#
+# HOW TO RUN:
+# docker-compose -f docker-compose-dev.yml up
+# =====================================================================
+
 services:
   api:
+    # Instead of pulling a remote image, we instruct Docker to build a new image 
+    # using the local Dockerfile in the current directory (.).
     build: .
     container_name: boltapi_api
+    
+    # Map port 8000 directly to 8000 for local testing (http://localhost:8000)
     ports:
       - "8000:8000"
     env_file:
       - .env
+      
+    # THE MAGIC OF DEV MODE (Bind Mount):
+    # This syncs your local project folder (.) with the /app directory inside the container.
+    # Combined with Uvicorn's '--reload' flag, the server will instantly update 
+    # whenever you save a Python file, without needing to rebuild the Docker image!
     volumes:
       - .:/app
     restart: always
@@ -22,6 +41,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
+      # We still use volumes in dev so you don't have to create new test users 
+      # every single time you restart your local environment.
       - postgres_data:/var/lib/postgresql/data 
     restart: always
 

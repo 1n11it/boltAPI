@@ -1,14 +1,57 @@
+# =====================================================================
+# BOLT API - SYSTEMD SERVICE CONFIGURATION (boltAPI.service)
+# =====================================================================
+# This file tells the Linux init system (systemd) how to start, stop, 
+# restart, and manage our FastAPI application as a background service.
+#
+# HOW TO DEPLOY:
+# 1. sudo cp boltapi.service /etc/systemd/system/
+# 2. sudo systemctl daemon-reload
+# 3. sudo systemctl start boltapi
+# 4. sudo systemctl enable boltapi  <-- (Starts app automatically on server reboot)
+# =====================================================================
+
 [Unit]
+# A human-readable name for the service. This appears in system logs (journalctl).
 Description=Gunicorn instance to serve BoltAPI
+
+# Ensures systemd doesn't try to start our API before the server has 
+# established its network interfaces. Without this, the bind address might fail.
 After=network.target
 
 [Service]
+# --- SECURITY ---
+# Never run a web application as the 'root' user! If the app is compromised, 
+# the attacker would gain full control of the server. Here, we run it safely 
+# under the limited 'ubuntu' user profile.
 User=ubuntu
 Group=ubuntu
+
+# --- EXECUTION CONTEXT ---
+# Sets the base directory. All relative paths in our Python code will resolve 
+# from this location.
 WorkingDirectory=/home/ubuntu/boltAPI
+
+# By explicitly setting the PATH environment variable to our virtual environment, 
+# we guarantee systemd uses our project's specific Python and installed packages 
+# instead of the server's global Python installation.
 Environment="PATH=/home/ubuntu/boltAPI/venv/bin"
+
+# Securely injects our database credentials and secret keys from the .env file.
+# This keeps sensitive data completely out of this service file.
 EnvironmentFile=/home/ubuntu/boltAPI/.env
+
+# --- THE STARTUP COMMAND ---
+# ExecStart is the actual command systemd runs.
+# -w 4: Spawns 4 separate worker processes to handle multiple requests concurrently.
+#       (Rule of thumb: 2 * CPU_CORES + 1)
+# -k uvicorn.workers.UvicornWorker: Gunicorn is natively synchronous. This flag 
+#       tells Gunicorn to use Uvicorn classes so it can handle our asynchronous FastAPI code.
+# --bind 0.0.0.0:8000: Listens for incoming traffic on all server IP addresses on port 8000.
 ExecStart=/home/ubuntu/boltAPI/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
 
 [Install]
+# This defines the "target" (runlevel) at which the service should be started if enabled.
+# 'multi-user.target' essentially means the server has booted up normally and is 
+# ready for non-graphical (terminal) logins.
 WantedBy=multi-user.target
