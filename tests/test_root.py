@@ -3,20 +3,10 @@ Test module for Root routing and Global API behavior.
 This file ensures that the base URL is working correctly, redirects to the 
 documentation appropriately, and handles invalid requests (wrong methods, bad paths) gracefully.
 """
-import pytest
-from fastapi.testclient import TestClient
 from fastapi import status
-from app.main import app
-
-@pytest.fixture
-def client():
-    """
-    Pytest fixture to create a fresh TestClient for each test.
-    """
-    yield TestClient(app)
 
 # ==========================================
-# ROOT & ROUTING TEST CASES
+# ROOT & REDIRECT LOGIC
 # ==========================================
 
 def test_root(client):
@@ -32,6 +22,10 @@ def test_root(client):
     
     # Confirm that the router correctly handled the request and landed on the documentation path
     assert res.url.path == "/redoc"
+
+# ==========================================
+# ROBUSTNESS & SECURITY CHECKS
+# ==========================================
 
 def test_root_invalid_method(client):
     """

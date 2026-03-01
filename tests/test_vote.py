@@ -3,77 +3,81 @@ Test module for Voting functionality.
 This file contains tests to ensure users can vote on posts, cannot vote twice on the same post,
 and can successfully remove their vote.
 """
-import pytest
-from fastapi.testclient import TestClient
 from fastapi import status
-from app.main import app
+from sqlmodel import select
+from sqlalchemy import func
+from app.models import Post
 
-@pytest.fixture
-def client():
-    """
-    Pytest fixture to create a fresh TestClient for each test.
-    This allows us to make mock HTTP requests to our FastAPI app without running the actual server.
-    """
-    yield TestClient(app)
+# ==========================================
+# VOTING TEST CASES
+# ==========================================
 
-def test_vote_on_post(client):
+def test_vote_success(authorized_client, setup_post):
     """
-    Tests the complete lifecycle of a vote on a post:
-    1. Authenticate user.
-    2. Create a fresh target post.
-    3. Add a new vote (Success).
-    4. Attempt to vote again on the same post (Conflict).
-    5. Remove the vote (Success).
+    Core Logic: Ensure an authenticated user can successfully vote (dir=1).
     """
-    # --- STEP 1: Authenticate the User ---
-    # We need a valid JWT token because the voting endpoint requires a logged-in user.
-    login_res = client.post(
-        "/login", 
-        data={"username": "hello@gmail.com", "password": "password123"}
+    res = authorized_client.post(
+        "/vote/", 
+        json={"post_id": setup_post["id"], "dir": 1}
     )
-    token = login_res.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    assert res.status_code == status.HTTP_201_CREATED
+    assert res.json()["message"] == "Successfully added vote"
 
-    # --- STEP 2: Create a Target Post ---
-    # To test voting, we must have a post that actually exists in the database.
-    # Creating a fresh post here ensures our test is isolated and doesn't rely on existing DB data.
-    post_res = client.post(
-        "/post/", 
-        json={"title": "Test Post", "content": "Voting test content"}, 
-        headers=headers
-    )
-    post_data = post_res.json()
+def test_vote_twice_conflict(authorized_client, setup_post):
+    """
+    Constraint Check: Prevent duplicate voting.
+    The system MUST return a 409 Conflict if a user tries to upvote the same post twice.
+    """
+    # 1st Vote (Should succeed)
+    authorized_client.post("/vote/", json={"post_id": setup_post["id"], "dir": 1})
     
-    # Validate the response structure before proceeding to avoid unexpected KeyErrors later.
-    assert "Post" in post_data
-    post_id = post_data["Post"]["id"]
-
-    # --- STEP 3: Test Adding a Vote (dir = 1) ---
-    # The 'dir' (direction) value of 1 means the user is liking the post.
-    vote_res = client.post(
-        "/vote/", 
-        json={"post_id": post_id, "dir": 1}, 
-        headers=headers
-    )
-    assert vote_res.status_code == status.HTTP_201_CREATED
-    assert vote_res.json()["message"] == "Successfully added vote"
-
-    # --- STEP 4: Test Duplicate Vote Conflict (dir = 1 again) ---
-    # A user should not be able to like the same post multiple times.
-    # The system should catch this and return a 409 Conflict.
-    repeat_vote = client.post(
-        "/vote/", 
-        json={"post_id": post_id, "dir": 1}, 
-        headers=headers
-    )
+    # 2nd Vote (Should be blocked)
+    repeat_vote = authorized_client.post("/vote/", json={"post_id": setup_post["id"], "dir": 1})
+    
     assert repeat_vote.status_code == status.HTTP_409_CONFLICT
 
-    # --- STEP 5: Test Removing a Vote (dir = 0) ---
-    # The 'dir' value of 0 means the user is un-liking or removing their vote.
-    delete_vote = client.post(
-        "/vote/", 
-        json={"post_id": post_id, "dir": 0}, 
-        headers=headers
-    )
-    assert delete_vote.status_code == status.HTTP_201_CREATED
-    assert delete_vote.json()["message"] == "Successfully deleted vote"
+def test_delete_vote_success(authorized_client, setup_post):
+    """
+    Core Logic: Ensure a user can remove their existing vote (dir=0).
+    """
+    # 1. Add the vote first
+    authorized_client.post("/vote/", json={"post_id": setup_post["id"], "dir": 1})
+    
+    # 2. Remove the vote
+    delete_res = authorized_client.post("/vote/", json={"post_id": setup_post["id"], "dir": 0})
+    
+    assert delete_res.status_code == status.HTTP_201_CREATED
+    assert delete_res.json()["message"] == "Successfully deleted vote"
+
+def test_delete_non_existent_vote(authorized_client, setup_post):
+    """
+    Edge Case: Attempt to remove a vote that doesn't exist.
+    The API should gracefully reject this rather than crashing the database.
+    """
+    # We send dir=0 WITHOUT ever sending dir=1 first
+    res = authorized_client.post("/vote/", json={"post_id": setup_post["id"], "dir": 0})
+    
+    # Usually, APIs return 404 if the vote record doesn't exist to be deleted
+    assert res.status_code == status.HTTP_404_NOT_FOUND
+
+def test_vote_non_existent_post(authorized_client, session):
+    """
+    Security & Edge Case: Voting on a post that has been deleted or never existed.
+    Uses dynamic ID discovery to guarantee a 404 Not Found response.
+    """
+    # Find max post ID and add 1 to guarantee it doesn't exist
+    max_post_id = session.exec(select(func.max(Post.id))).one() or 0
+    fake_post_id = max_post_id + 1
+    
+    res = authorized_client.post("/vote/", json={"post_id": fake_post_id, "dir": 1})
+    assert res.status_code == status.HTTP_404_NOT_FOUND
+
+def test_vote_unauthorized_user(client, setup_post):
+    """
+    Security Check: Ensure unauthenticated users cannot interact with the voting system.
+    Uses the base 'client' (no token) instead of 'authorized_client'.
+    """
+    # Remove the 'Bearer' token provided by 'authorized_client'.
+    client.headers = {}
+    res = client.post("/vote/", json={"post_id": setup_post["id"], "dir": 1})
+    assert res.status_code == status.HTTP_401_UNAUTHORIZED
