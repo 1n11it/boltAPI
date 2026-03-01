@@ -4,12 +4,8 @@ This file contains integration tests for all CRUD (Create, Read, Update, Delete)
 operations related to posts, as well as strict authorization checks to ensure 
 users can only modify their own data.
 """
-import pytest
-from fastapi.testclient import TestClient
 from fastapi import status
-from app.main import app
-from app.schemas import PostOut, PostCreate
-from app.models import Post
+from app.schemas import PostOut
 
 # ==========================================
 # READ & LISTING TEST CASES
