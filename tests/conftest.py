@@ -2,23 +2,26 @@
 Pytest Configuration and Global Fixtures.
 This file acts as the 'Control Center' for all tests.
 KEY COMPONENTS:
-- Database Session: Handles per-test isolation and data cleanup.
-- Engine: Core SQLAlchemy interface for the test database.
-- Client Factory: Provides both standard and Pre-Authorized (JWT) TestClients.
-- Authentication: Manages automatic user creation and token generation.
+- DB Session Management: Implements atomic test isolation via Alembic schema resets.
+- Engine Interface: Provides a dedicated SQLAlchemy connection for the test database.
+- Client Factory: Generates standard and Pre-Authorized (JWT-bearing) TestClients.
+- Identity Management: Automates dynamic user creation and OAuth2 token injection.
+- Content Seeding: Bootstraps initial state (Posts/Votes) for complex CRUD scenarios.
 """
 import pytest
 from sqlmodel import Session, delete, create_engine
 from app.main import app
 from app.database import get_session, engine
 from app.config import settings
+from alembic import command
+from alembic.config import Config
 from app.models import User, Post, Vote
 from fastapi.testclient import TestClient
 
-# Pointing specifically to  test database
+# Pointing to the test database
 DATABASE_URL = (
     f"postgresql://{settings.database_username}:{settings.database_password}@"
-    f"{settings.database_hostname}:{settings.database_port}/boltapi_test"
+    f"{settings.database_hostname}:{settings.database_port}/{settings.database_name}"
 )
 
 engine = create_engine(DATABASE_URL)
@@ -26,24 +29,24 @@ engine = create_engine(DATABASE_URL)
 @pytest.fixture(name="session")
 def session_fixture():
     """
-    Provides a clean database session for each test.
+    Enforces a strict 'Clean Slate' policy for every test case using Alembic.
     
-    HOW IT WORKS:
-    1. It opens a transaction with the database.
-    2. It yields the session to the test function.
-    3. AFTER the test finishes, it runs the DELETE commands to wipe the tables.
-    
-    Why use delete() instead of drop_all()?: Manual deletion is significantly faster
-    for local development and Docker environments while maintaining Foreign Key safety.
+    Lifecycle:
+    1. Setup Phase: Wipes the DB (base) and reconstructs the latest schema (head).
+    2. Yield: Provides a transactional SQLModel session for the test duration.
+    3. Persistence: Data is retained post-test to facilitate manual debugging.
     """
+    # 1. Load Alembic config from project root
+    alembic_cfg = Config("alembic.ini")
+    
+    # 2. Dynamic URL injection (Test DB focus)
+    alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+    
+    # 3. SETUP: DB cleanup
+    #  First delete everything (downgrade), then fresh tables (upgrade)
+    command.downgrade(alembic_cfg, "base")
+    command.upgrade(alembic_cfg, "head")
     with Session(engine) as session:
-        # --- TEARDOWN / CLEANUP ---
-        # We delete data in reverse order of relationships to avoid IntegrityErrors.
-        # Votes depend on Posts/Users, so they go first.
-        session.exec(delete(Vote))
-        session.exec(delete(Post))
-        session.exec(delete(User))
-        session.commit()
         yield session
 
 @pytest.fixture(name="client")
