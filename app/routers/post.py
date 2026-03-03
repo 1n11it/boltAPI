@@ -42,8 +42,8 @@ def get_posts(
     statement = (
         select(Post, func.count(Vote.post_id).label("votes"))
         .join(Vote, Post.id == Vote.post_id, isouter=True)
-        .group_by(Post.id)
         .where(col(Post.title).contains(search))
+        .group_by(Post.id)
         .limit(limit).offset(skip)
     )
     
@@ -64,14 +64,14 @@ def get_post(
     statement = (
         select(Post, func.count(Vote.post_id).label("votes"))
         .join(Vote, Post.id == Vote.post_id, isouter=True)
-        .group_by(Post.id)
         .where(Post.id == id)
+        .group_by(Post.id)
     )
     
     post = session.exec(statement).first()
     
     if not post:
-        raise HTTPException(status_code=404, detail=f"Post with id {id} does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} does not exist")
         
     return post
 
@@ -111,7 +111,7 @@ def update_post(
     # Step 1: Ensure the post exists
     db_post = session.get(Post, id)
     if not db_post:
-        raise HTTPException(status_code=404, detail=f"Post with id {id} does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} does not exist")
         
     # Step 2: STRICT AUTHORIZATION CHECK
     # This acts as a firewall. Even if a user is logged in, they cannot 
@@ -151,7 +151,7 @@ def delete_post(
     # Step 1: Ensure the post exists
     post = session.get(Post, id)
     if not post:
-        raise HTTPException(status_code=404, detail=f"Post with id {id} does not exist")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} does not exist")
         
     # Step 2: STRICT AUTHORIZATION CHECK
     # Prevents users from deleting other people's posts.
