@@ -6,10 +6,10 @@
 # =====================================================================
 
 # Step 1: Base Image Selection
-# We use a specific, official Python image (trixie) to ensure consistency.
+# We use a specific, official Python image (slim) to ensure consistency.
 # Pinning the exact version (3.14.3) prevents unexpected breaking changes 
-# if a newer, incompatible version of Python is released in the future.
-FROM python:3.14.3-trixie
+# while keeping the image size drastically smaller for efficient deployment.
+FROM python:3.14.3-slim
 
 # Step 2: Set Working Directory
 # All subsequent commands (COPY, RUN, CMD) will be executed inside this 

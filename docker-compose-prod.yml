@@ -32,6 +32,9 @@ services:
       - db
 
   db:
+    # We purposefully DO NOT expose port 5432 to the host in production.
+    # The API container can still connect internally via Docker's isolated network,
+    # but external attackers cannot brute-force the database from the internet.
     image: boltapi-postgres:latest
     container_name: boltapi_db
     
@@ -40,11 +43,6 @@ services:
       POSTGRES_USER: ${DATABASE_USERNAME} 
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}  
       POSTGRES_DB: ${DATABASE_NAME}
-      
-    # Exposing the database port allows external database GUI clients (like DBeaver/pgAdmin) 
-    # to connect to the production database for administrative tasks.
-    ports:
-      - "5432:5432"
       
     # CRITICAL: This named volume ensures that database records survive container restarts.
     # Without this, all users and posts would be permanently deleted if the DB container stops!

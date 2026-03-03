@@ -23,8 +23,7 @@ services:
       
     # THE MAGIC OF DEV MODE (Bind Mount):
     # This syncs your local project folder (.) with the /app directory inside the container.
-    # Combined with Uvicorn's '--reload' flag, the server will instantly update 
-    # whenever you save a Python file, without needing to rebuild the Docker image!
+    # This keeps your code in sync without needing to rebuild the Docker image every time.
     volumes:
       - .:/app
     restart: always
