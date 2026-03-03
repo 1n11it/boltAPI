@@ -9,13 +9,13 @@ KEY COMPONENTS:
 - Content Seeding: Bootstraps initial state (Posts/Votes) for complex CRUD scenarios.
 """
 import pytest
-from sqlmodel import Session, delete, create_engine
+from sqlmodel import Session, create_engine
 from app.main import app
 from app.database import get_session, engine
 from app.config import settings
 from alembic import command
 from alembic.config import Config
-from app.models import User, Post, Vote
+from fastapi import status
 from fastapi.testclient import TestClient
 
 # Pointing to the test database
@@ -42,7 +42,7 @@ def session_fixture():
     # 2. Dynamic URL injection (Test DB focus)
     alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
     
-    # 3. SETUP: DB cleanup
+    # 3. DB cleanup
     #  First delete everything (downgrade), then fresh tables (upgrade)
     command.downgrade(alembic_cfg, "base")
     command.upgrade(alembic_cfg, "head")
@@ -77,7 +77,23 @@ def test_user(client):
     user_data = {"email": "tester_pro@example.com", "password": "password123"}
     res = client.post("/user/", json=user_data)
     
-    assert res.status_code == 201
+    assert res.status_code == status.HTTP_201_CREATED
+    new_user = res.json()
+    # We store the plain password because it is needed for subsequent login tests
+    new_user['plain_password'] = user_data['password']
+    
+    return new_user
+
+@pytest.fixture
+def test_user2(client):
+    """
+    Fixture to dynamically create a new user2 for any test.
+    Returns a dictionary containing the user2's data and their plain password.
+    """
+    user_data = {"email": "tester_pro2@example.com", "password": "password123"}
+    res = client.post("/user/", json=user_data)
+    
+    assert res.status_code == status.HTTP_201_CREATED
     new_user = res.json()
     # We store the plain password because it is needed for subsequent login tests
     new_user['plain_password'] = user_data['password']
@@ -94,6 +110,19 @@ def token(client, test_user):
     res = client.post("/login", data={
         "username": test_user['email'], 
         "password": test_user['plain_password']
+    })
+    return res.json()["access_token"]
+
+@pytest.fixture
+def token2(client, test_user2):
+    """
+    Automated Login Fixture.
+    Depends on 'test_user2'. It logs that user in and returns a valid JWT string.
+    This allows post-related tests to focus ONLY on post logic.
+    """
+    res = client.post("/login", data={
+        "username": test_user2['email'], 
+        "password": test_user2['plain_password']
     })
     return res.json()["access_token"]
 

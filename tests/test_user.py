@@ -4,12 +4,13 @@ This file contains integration tests for the user lifecycle: registration,
 preventing duplicate accounts, logging in (OAuth2), and fetching protected user profiles.
 """
 import pytest
+from jose import jwt
 from fastapi import status
 from sqlmodel import select
 from app.schemas import UserOut
 from sqlalchemy import func
 from app.models import User
-
+from app.config import settings
 # ==========================================
 # REGISTRATION & PROFILE VALIDATION
 # ==========================================
@@ -78,10 +79,13 @@ def test_get_user_not_found(authorized_client, session):
 
 def test_login_user_success(client, test_user):
     """
-    Test the OAuth2 Password Bearer login flow.
-    
-    Note: OAuth2PasswordRequestForm expects form-data (data=...), NOT a JSON body.
-    Verifies that valid credentials return a JWT payload with 'access_token' and 'token_type'.
+    Assert that a registered user can authenticate via OAuth2 Password Flow.
+
+    Validates:
+    - The endpoint accepts 'application/x-www-form-urlencoded' data.
+    - Successful authentication returns a 200 OK status.
+    - The response contains a valid Bearer token.
+    - The JWT payload cryptographically confirms the correct 'user_id' identity.
     """
     login_res = client.post(
         "/login", 
@@ -89,9 +93,24 @@ def test_login_user_success(client, test_user):
     )
     
     assert login_res.status_code == status.HTTP_200_OK
-    data = login_res.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    login_data = login_res.json()
+
+    # Surface Checks
+    assert login_data["token_type"] == "bearer"
+    assert "access_token" in login_data
+    token = login_data["access_token"]
+
+    # We  decode the token using the same SECRET_KEY and ALGORITHM
+    payload = jwt.decode(
+        token, 
+        settings.secret_key, 
+        algorithms=[settings.algorithm]
+    )
+
+    # Extract the 'user_id' from inside the payload and match it
+    id_from_token = payload.get("user_id") 
+    assert id_from_token == test_user['id']
+
     
 @pytest.mark.parametrize("email, password, expected_status", [
     # 1. Non-existent email
@@ -104,8 +123,10 @@ def test_login_user_success(client, test_user):
     (None, "password123", status.HTTP_422_UNPROCESSABLE_CONTENT),
     ("VALID_USER_EMAIL", None, status.HTTP_422_UNPROCESSABLE_CONTENT),
     
-    # 4. Empty string edge-case 
-    ( "", "password123", status.HTTP_422_UNPROCESSABLE_CONTENT)
+    # 4. Empty string edge-cases
+    ( "", "password123", status.HTTP_422_UNPROCESSABLE_CONTENT),
+    ( "VALID_USER_EMAIL", "", status.HTTP_422_UNPROCESSABLE_CONTENT),
+    ( "", "", status.HTTP_422_UNPROCESSABLE_CONTENT)
 ])
 def test_login_user_failed(client, test_user, email, password, expected_status):
     """Comprehensive failure testing using Parametrization"""

@@ -72,7 +72,7 @@ def test_vote_non_existent_post(authorized_client, session):
     res = authorized_client.post("/vote/", json={"post_id": fake_post_id, "dir": 1})
     assert res.status_code == status.HTTP_404_NOT_FOUND
 
-def test_vote_unauthorized_user(client, setup_post):
+def test_vote_unauthorized(client, setup_post):
     """
     Security Check: Ensure unauthenticated users cannot interact with the voting system.
     Uses the base 'client' (no token) instead of 'authorized_client'.
