@@ -11,8 +11,10 @@
 # PRO TIP: Containers start at different speeds. This loop prevents the 
 # app from crashing if Postgres is still performing internal setup.
 echo "Waiting for database to be ready..."
-# We use 'alembic upgrade' as a connectivity test. If it fails to connect, 
-# the script pauses and retries, avoiding 'Connection Refused' errors.
+while ! nc -z db 5432; do
+    echo "Database is not reachable yet. Sleeping for 1 second..."
+    sleep 1
+done
 
 # Step 2: Database Migrations
 # This ensures our Database Schema (Tables, Columns, Constraints) 
