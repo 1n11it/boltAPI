@@ -1,6 +1,12 @@
 # boltAPI
 
-boltAPI is a high-performance RESTful API backend designed for social media-style CRUD operations. Built to demonstrate a complete production-grade backend lifecycle, it integrates strict data validation, relational database management, and a fully automated CI/CD pipeline.
+boltAPI is a RESTful API backend designed for social media-style CRUD operations. Built to demonstrate a complete production-grade backend lifecycle, it integrates strict data validation, relational database management, and a fully automated CI/CD pipeline.
+
+![Build](https://img.shields.io/github/actions/workflow/status/1n11it/boltAPI/main.yml?branch=main&label=CI/CD&style=flat-square&color=2ecc71)
+![Framework](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Database](https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white)
+![Infra](https://img.shields.io/badge/AWS_EC2-FF9900?style=flat-square&logo=amazonaws&logoColor=white)
+![Server](https://img.shields.io/badge/Nginx-009639?style=flat-square&logo=nginx&logoColor=white)
 
 ## System Architecture
 
