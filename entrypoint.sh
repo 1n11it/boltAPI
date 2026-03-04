@@ -10,11 +10,13 @@
 # Step 1: Database Readiness Check
 # PRO TIP: Containers start at different speeds. This loop prevents the 
 # app from crashing if Postgres is still performing internal setup.
+# 'nc' (netcat) will check if the port is open or not
 echo "Waiting for database to be ready..."
-while ! nc -z db 5432; do
-    echo "Database is not reachable yet. Sleeping for 1 second..."
+while ! nc -z "${DATABASE_HOSTNAME}" "${DATABASE_PORT}";do
+    echo "Database (${DATABASE_HOSTNAME}) is not reachable yet. Retrying in 1s..."
     sleep 1
 done
+echo "Database is UP and reachable!"
 
 # Step 2: Database Migrations
 # This ensures our Database Schema (Tables, Columns, Constraints) 
