@@ -1,0 +1,87 @@
+# =====================================================================
+# BOLT API - CI/CD WORKFLOW (GITHUB ACTIONS)
+# =====================================================================
+# This workflow automates the testing and deployment pipeline for the BoltAPI. 
+# It triggers on push and pull requests to the main branch, orchestrating automated testing 
+# with a Postgres service container before proceeding to deployment.
+# =====================================================================
+
+name: Built and Deploy boltAPI
+
+on:
+    push:
+        branches: ["main"] # Deployment will only be triggered on the main branch
+    pull_request:
+        branches: ["main"] # Only tests will run on the PR
+
+jobs:
+# JOB 1: TESTING (Uses 'test' environment)
+  pytest-job:
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      DATABASE_HOSTNAME: ${{ secrets.DATABASE_HOSTNAME }}
+      DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+      DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      ALGORITHM: ${{ secrets.ALGORITHM }}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+    services:
+      # GitHub will run a temporary Postgres container itself
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.DATABASE_NAME }}
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.14.3"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Migrations # For creating tables in the testing environment
+        run: alembic upgrade head
+
+      - name: Run Tests
+        run: pytest
+
+  # JOB 2: BUILD & PUSH (Uses 'prod' environment)
+  docker-build-job:
+    needs: pytest-job # An image will only be created when all tests pass
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          # Image tagging
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/boltapi:latest
