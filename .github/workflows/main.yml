@@ -16,7 +16,7 @@ on:
 
 jobs:
 # JOB 1: TESTING (Uses 'test' environment)
-  pytest-job:
+  test-job:
     runs-on: ubuntu-latest
     environment: test
     env:
@@ -63,8 +63,8 @@ jobs:
         run: pytest
 
   # JOB 2: BUILD & PUSH (Uses 'prod' environment)
-  docker-build-job:
-    needs: pytest-job # An image will only be created when all tests pass
+  build-job:
+    needs: test-job # An image will only be created when all tests pass
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: prod
@@ -85,3 +85,26 @@ jobs:
           push: true
           # Image tagging
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/boltapi:latest
+
+    # JOB 3: DEPLOY (Uses 'prod' environment)
+  deploy-job:
+    needs: build-job 
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: SSH into EC2 and Update App
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/boltAPI 
+            docker compose pull
+            docker compose up -d
+            docker image prune -f 
+          # Go to the project folder. 
+          # Pull the new image from Docker Hub. 
+          # Restart the containers with the new version. 
+          # Delete unnecessary old images to save space.
