@@ -35,7 +35,7 @@ services:
     # We purposefully DO NOT expose port 5432 to the host in production.
     # The API container can still connect internally via Docker's isolated network,
     # but external attackers cannot brute-force the database from the internet.
-    image: boltapi-postgres:latest
+    image: postgres:latest
     container_name: boltapi_db
     
     # Passes database credentials from the .env file directly into the Postgres container.
