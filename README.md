@@ -65,7 +65,7 @@ The application utilizes `SQLModel` for schema definitions and database interact
 ### Testing Strategy
 The application maintains high reliability through a comprehensive test suite using pytest.
 * **Fixtures:** Utilizes `conftest.py` to modularize setup and teardown operations, including isolated database sessions, test clients, and authenticated user token generation.
-* **Parametrization:** Employs pytest.mark.parametrize across test modules (`test_user.py`, `test_post.py`, `test_vote.py`) to systematically validate endpoints against multiple input payloads and edge cases without code duplication.
+* **Parametrization:** Employs pytest.mark.parametrize across test modules (`test_user.py`, `test_post.py`) to systematically validate endpoints against multiple input payloads and edge cases without code duplication.
 
 ### Continuous Integration & Deployment (CI/CD)
 The deployment lifecycle is fully automated using GitHub Actions. The pipeline executes in three distinct stages:
