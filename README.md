@@ -92,15 +92,17 @@ Use the development compose file to spin up the API and PostgreSQL database.
 ```bash
 docker compose -f docker-compose-dev.yml up -d
 ```
+
 ## Live Demo & API Documentation
 
-The API is deployed and actively hosted. The root endpoint automatically redirects to the Redoc documentation for immediate accessibility, while interactive testing is available via Swagger UI.
+The API's design and reference are preserved as a static site for architectural review. While the production backend is currently decommissioned to manage hosting costs, the full schema remains accessible.
 
-* **Base URL:** `https://boltapi.site`
-* **Root Redirect:** Navigating to the base URL automatically serves the Redoc interface.
+* **API Reference (Redoc):** [**Static Docs**](https://boltapi-redocs.netlify.app/)
+* **Local Access:** To test endpoints interactively (Swagger UI), please follow the **Local Development Setup** to run the API via Docker.
 
-### Documentation Endpoints
-FastAPI automatically generates comprehensive OpenAPI documentation. Two interfaces are exposed:
+### API Specification
 
-1. **[Interactive Docs (Swagger UI)](https://boltapi.site/docs):** Best for active testing, executing requests, and viewing real-time JSON responses and validation errors.
-2. **[Reference Docs (Redoc)](https://boltapi.site/redoc):** Best for reading static, structured documentation with clear schema definitions and payload examples.
+The documentation provides a comprehensive view of the API's structure:
+
+* **[Static Reference](https://boltapi-redocs.netlify.app/):** Best for exploring schemas, request types, and response models without needing a running server.
+* **Local Endpoints:** When running the project locally, you can access the interactive documentation at `/docs` (Swagger UI) or `/redoc` (Redoc) to execute requests against your local database.
